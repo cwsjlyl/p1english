@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon English Battle</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #333;
+            text-align: center;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            image-rendering: pixelated;
+        }
+
+        #game-wrapper {
+            width: 800px;
+            height: 600px;
+            background-color: #000;
+            border: 10px solid #3d3d3d;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* --- Screens --- */
+        .screen {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+        
+        #start-screen, #end-screen { background: #000; }
+        #end-screen { display: none; }
+        
+        #start-screen-image { max-width: 90%; max-height: 70%; margin-bottom: 30px; }
+
+        #start-button, #play-again-button {
+            padding: 20px 40px;
+            font-size: 24px;
+            font-family: 'Press Start 2P', cursive;
+            cursor: pointer;
+            background-color: #f3d43d;
+            border: 4px solid #c7a008;
+            border-radius: 10px;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        #pokemon-selection-screen {
+            display: none;
+            background: url('https://pic.616pic.com/bg_w1180/00/00/90/o8vmQz3l5T.jpg') no-repeat center;
+            background-size: cover;
+        }
+        
+        #pokemon-selection-screen h2 { font-size: 28px; margin-bottom: 20px; text-shadow: 3px 3px 5px #000; }
+
+        #pokemon-choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+
+        .choice-card {
+            background-color: rgba(0, 0, 0, 0.4);
+            border: 4px solid #fff;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+
+        .choice-card:hover { transform: scale(1.1); background-color: rgba(255, 215, 0, 0.4); }
+        .choice-card img { width: 100px; height: 100px; }
+        .choice-card p { margin-top: 10px; font-size: 16px; }
+
+        #game-container { display: none; width: 100%; height: 100%; }
+
+        /* --- Battle Area --- */
+        .pokemon-battle-area {
+            position: relative;
+            width: 100%;
+            height: 350px;
+            background: url('https://pic.616pic.com/bg_w1180/00/12/11/LyjOSZBehe.jpg') no-repeat center center;
+            background-size: cover;
+            border-bottom: 10px solid #3d3d3d;
+        }
+
+        .pokemon { position: absolute; width: 160px; height: 160px; transition: transform 0.1s; }
+        #enemy-pokemon-img { top: 40px; right: 70px; width: 150px; height: 150px; }
+        #player-pokemon-img { bottom: 20px; left: 60px; transform: scaleX(-1); }
+
+        .status-box { position: absolute; background-color: #fdfdfd; border: 4px solid #3d3d3d; border-radius: 8px; padding: 10px; width: 250px; font-size: 16px; }
+        #enemy-status { top: 30px; left: 30px; }
+        #player-status { bottom: 90px; right: 30px; }
+
+        .hp-bar-container { width: 100%; background-color: #ddd; border-radius: 5px; border: 2px solid #333; margin-top: 5px; }
+        .hp-bar { height: 15px; width: 100%; background-color: #5f0; border-radius: 3px; transition: width 0.5s; }
+        .hp-bar.low { background-color: #f90; }
+        .hp-bar.critical { background-color: #f00; }
+        
+        .evolution-bar-container { width: 100%; background-color: #ddd; border-radius: 5px; border: 2px solid #333; margin-top: 3px; }
+        .evolution-bar { height: 8px; width: 0%; background-color: #3498db; border-radius: 3px; transition: width 0.5s; }
+
+        /* --- UI Panel --- */
+        .ui-panel { display: flex; justify-content: space-between; align-items: center; height: 250px; padding: 20px; box-sizing: border-box; background-color: #4e8a8b; }
+        #message-box { width: 48%; height: 100%; background-color: #fdfdfd; border: 4px solid #3d3d3d; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 20px; padding: 15px; box-sizing: border-box; line-height: 1.5; }
+        #controls-box { width: 48%; height: 100%; display: flex; flex-direction: column; justify-content: space-around; }
+        #word-input { padding: 10px; font-size: 18px; text-align: center; border: 4px solid #3d3d3d; border-radius: 8px; font-family: 'Press Start 2P', cursive; }
+        
+        .control-button { padding: 12px; font-size: 16px; font-family: 'Press Start 2P', cursive; cursor: pointer; border-radius: 8px; border: 4px solid #3d3d3d; }
+        #attack-button { background-color: #ff7373; }
+        #listen-button { background-color: #73d6ff; }
+        
+        /* --- Animations & End Screen --- */
+        .attack-effect { animation: shake 0.3s; }
+        @keyframes shake { 0%, 100% { transform: translate(0, 0) rotate(0); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } }
+        .faint-effect { animation: faint 1.5s forwards; }
+        @keyframes faint { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(50px); } }
+        .evolve-effect { animation: evolve-glow 2.5s; }
+        @keyframes evolve-glow { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(3) drop-shadow(0 0 20px white); } }
+        
+        #end-screen h2 { font-size: 32px; margin-bottom: 20px; }
+        #end-screen p { font-size: 20px; margin-bottom: 40px; line-height: 1.6; }
+        #pokeball-img { width: 80px; height: 80px; margin-bottom: 20px; animation: spin 1.5s linear; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <audio id="word-audio"></audio>
+    <audio id="battle-music" loop><source src="https://vgmsite.com/soundtracks/pokemon-game-boy-pok-mon-sound-collection/vvdpkmqs/1-07-%20Battle%20%28VS%20Trainer%29.mp3" type="audio/mpeg"></audio>
+    <audio id="attack-sound"><source src="https://play.pokemonshowdown.com/audio/cries/pikachu.mp3" type="audio/mpeg"></audio>
+    <audio id="victory-sound"><source src="https://vgmsite.com/soundtracks/pokemon-game-boy-pok-mon-sound-collection/qsqoemef/1-08-%20Victory%20%28VS%20Trainer%29.mp3" type="audio/mpeg"></audio>
+    <audio id="evolve-sound"><source src="https://play.pokemonshowdown.com/audio/evo.mp3" type="audio/mpeg"></audio>
+    <audio id="hit-sound"><source src="https://play.pokemonshowdown.com/audio/se/supereffective.mp3" type="audio/mpeg"></audio>
+    <audio id="pokeball-throw-sound"><source src="https://play.pokemonshowdown.com/audio/se/pokeballthrow.mp3" type="audio/mpeg"></audio>
+    <audio id="capture-sound"><source src="https://play.pokemonshowdown.com/audio/se/catch.mp3" type="audio/mpeg"></audio>
+
+    <div id="game-wrapper">
+        <div id="start-screen" class="screen">
+            <img id="start-screen-image" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRn74k9jrdLZiWw0dCfb06gfj7SzsJbSBR0cQ&s" alt="Pokemon Game Start">
+            <button id="start-button">Start Game</button>
+        </div>
+        
+        <div id="pokemon-selection-screen" class="screen">
+            <h2>Choose your Partner!</h2>
+            <div id="pokemon-choices"></div>
+        </div>
+
+        <div id="game-container">
+            <div class="pokemon-battle-area">
+                <div id="enemy-status" class="status-box"><div id="enemy-name"></div><div class="hp-bar-container"><div id="enemy-hp-bar" class="hp-bar"></div></div></div>
+                <img id="enemy-pokemon-img" class="pokemon" src="" alt="Enemy Pokemon">
+                <div id="player-status" class="status-box"><div id="player-name"></div><div class="hp-bar-container"><div id="player-hp-bar" class="hp-bar"></div></div><div class="evolution-bar-container"><div id="evolution-bar" class="evolution-bar"></div></div></div>
+                <img id="player-pokemon-img" class="pokemon" src="" alt="Player Pokemon">
+            </div>
+            <div class="ui-panel">
+                <div id="message-box">Listen to the word...</div>
+                <div id="controls-box"><input type="text" id="word-input" placeholder="Type the word here..."><button id="attack-button" class="control-button">Attack!</button><button id="listen-button" class="control-button">Listen Again</button></div>
+            </div>
+        </div>
+
+        <div id="end-screen" class="screen">
+            <h2 id="end-title">Congratulations!</h2>
+            <img id="pokeball-img" src="https://www.freeiconspng.com/uploads/pokeball-pokemon-ball-png-images-4.png" alt="Pokeball">
+            <p id="end-message"></p>
+            <button id="play-again-button">Play Again?</button>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const wordData = {
+            'ball': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/ball--_us_1.mp3', 'doll': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/doll--_us_1.mp3', 'puzzle': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/puzzle--_us_1.mp3', 'robot': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/robot--_us_1.mp3', 'teddy bear': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/teddy_bear--_us_1.mp3', 'toy car': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/toy_car--_us_1.mp3', 'toy dinosaur': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/toy_dinosaur--_us_1.mp3', 'toy plane': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/toy_plane--_us_1.mp3', 'toy train': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/toy_train--_us_1.mp3', 'action figure': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/action_figure--_us_1.mp3', 'board game': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/board_game--_us_1.mp3', 'crawl': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/crawl--_us_1.mp3', 'draw': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/draw--_us_1.mp3', 'drink': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/drink--_us_1.mp3', 'eat': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/eat--_us_1.mp3', 'hop': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/hop--_us_1.mp3', 'laugh': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/laugh--_us_1.mp3', 'play': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/play--_us_1.mp3', 'read': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/read--_us_1.mp3', 'run': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/run--_us_1.mp3', 'sing': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/sing--_us_1.mp3', 'sleep': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/sleep--_us_1.mp3', 'swim': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/swim--_us_1.mp3', 'talk': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/talk--_us_1.mp3', 'fly': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/fly--_us_1.mp3', 'jump': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/jump--_us_1.mp3', 'walk': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/walk--_us_1.mp3', 'cow': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/cow--_us_1.mp3', 'duck': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/duck--_us_1.mp3', 'hen': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/hen--_us_1.mp3', 'horse': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/horse--_us_1.mp3', 'sheep': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/sheep--_us_1.mp3', 'chick': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/chick--_us_1.mp3', 'duckling': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/duckling--_us_1.mp3', 'pony': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/pony--_us_1.mp3', 'barn': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/barn--_us_1.mp3', 'farmhouse': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/farmhouse--_us_1.mp3', 'fence': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/fence--_us_1.mp3', 'gate': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/gate--_us_1.mp3', 'pond': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/pond--_us_1.mp3', 'hamster': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/hamster--_us_1.mp3', 'goldfish': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/goldfish--_us_1.mp3', 'parrot': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/parrot--_us_1.mp3', 'turtle': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/turtle--_us_1.mp3', 'kitten': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/kitten--_us_1.mp3', 'rabbit': 'https://ssl.gstatic.com/dictionary/static/sounds/20200429/rabbit--_us_1.mp3'
+        };
+        const words = Object.keys(wordData);
+        const allEnemies = [ { name: 'Articuno', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/articuno.gif' }, { name: 'Zapdos', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/zapdos.gif' }, { name: 'Moltres', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/moltres.gif' }, { name: 'Mewtwo', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/mewtwo.gif' }, { name: 'Raikou', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/raikou.gif' }, { name: 'Entei', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/entei.gif' }, { name: 'Suicune', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/suicune.gif' }, { name: 'Lugia', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/lugia.gif' }, { name: 'Ho-Oh', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/ho-oh.gif' }, { name: 'Kyogre', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/kyogre.gif' }, { name: 'Groudon', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/groudon.gif' }, { name: 'Rayquaza', img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/rayquaza.gif' } ];
+        const playerChoices = [
+            { name: 'Bulbasaur', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/bulbasaur.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/bulbasaur.gif', evolution: { name: 'Ivysaur', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/ivysaur.gif', evolution: { name: 'Venusaur', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/venusaur.gif' } } },
+            { name: 'Charmander', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/charmander.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/charmander.gif', evolution: { name: 'Charmeleon', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/charmeleon.gif', evolution: { name: 'Charizard', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/charizard.gif' } } },
+            { name: 'Squirtle', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/squirtle.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/squirtle.gif', evolution: { name: 'Wartortle', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/wartortle.gif', evolution: { name: 'Blastoise', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/blastoise.gif' } } },
+            { name: 'Chikorita', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/chikorita.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/chikorita.gif', evolution: { name: 'Bayleef', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/bayleef.gif', evolution: { name: 'Meganium', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/meganium.gif' } } },
+            { name: 'Cyndaquil', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/cyndaquil.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/cyndaquil.gif', evolution: { name: 'Quilava', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/quilava.gif', evolution: { name: 'Typhlosion', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/typhlosion.gif' } } },
+            { name: 'Totodile', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/totodile.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/totodile.gif', evolution: { name: 'Croconaw', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/croconaw.gif', evolution: { name: 'Feraligatr', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/feraligatr.gif' } } },
+            { name: 'Treecko', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/treecko.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/treecko.gif', evolution: { name: 'Grovyle', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/grovyle.gif', evolution: { name: 'Sceptile', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/sceptile.gif' } } },
+            { name: 'Torchic', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/torchic.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/torchic.gif', evolution: { name: 'Combusken', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/combusken.gif', evolution: { name: 'Blaziken', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/blaziken.gif' } } },
+            { name: 'Mudkip', front_img: 'https://img.pokemondb.net/sprites/black-white/anim/normal/mudkip.gif', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/mudkip.gif', evolution: { name: 'Marshtomp', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/marshtomp.gif', evolution: { name: 'Swampert', back_img: 'https://img.pokemondb.net/sprites/black-white/anim/back-normal/swampert.gif' } } }
+        ];
+
+        // --- Game State ---
+        let player, originalPlayer, enemies = [], currentWord = '', currentEnemyIndex = 0, enemy;
+        let attackCounter = 0, evolutionStage = 0, wrongAnswerCount = 0, revealedIndices = new Set();
+        let isSpeaking = false;
+
+        // --- DOM Elements ---
+        const dom = { startScreen: document.getElementById('start-screen'), startButton: document.getElementById('start-button'), pokemonSelectionScreen: document.getElementById('pokemon-selection-screen'), choicesContainer: document.getElementById('pokemon-choices'), gameContainer: document.getElementById('game-container'), messageBox: document.getElementById('message-box'), wordInput: document.getElementById('word-input'), attackButton: document.getElementById('attack-button'), listenButton: document.getElementById('listen-button'), enemyName: document.getElementById('enemy-name'), enemyHpBar: document.getElementById('enemy-hp-bar'), enemyPokemonImg: document.getElementById('enemy-pokemon-img'), playerName: document.getElementById('player-name'), playerHpBar: document.getElementById('player-hp-bar'), playerPokemonImg: document.getElementById('player-pokemon-img'), evolutionBar: document.getElementById('evolution-bar'), controlsBox: document.getElementById('controls-box'), endScreen: document.getElementById('end-screen'), endTitle: document.getElementById('end-title'), endMessage: document.getElementById('end-message'), pokeballImg: document.getElementById('pokeball-img'), playAgainButton: document.getElementById('play-again-button') };
+        const audio = { word: document.getElementById('word-audio'), battle: document.getElementById('battle-music'), attack: document.getElementById('attack-sound'), victory: document.getElementById('victory-sound'), evolve: document.getElementById('evolve-sound'), hit: document.getElementById('hit-sound'), pokeball: document.getElementById('pokeball-throw-sound'), capture: document.getElementById('capture-sound') };
+
+        // --- Event Listeners ---
+        dom.startButton.addEventListener('click', showPokemonSelection);
+        dom.attackButton.addEventListener('click', checkAnswer);
+        dom.wordInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') checkAnswer(); });
+        dom.listenButton.addEventListener('click', () => { if (currentWord) speak(currentWord); });
+        dom.playAgainButton.addEventListener('click', resetGame);
+
+        // --- Game Flow ---
+        function showPokemonSelection() {
+            dom.startScreen.style.display = 'none';
+            dom.pokemonSelectionScreen.style.display = 'flex';
+            dom.choicesContainer.innerHTML = '';
+            playerChoices.forEach(choice => {
+                const card = document.createElement('div');
+                card.className = 'choice-card';
+                card.innerHTML = `<img src="${choice.front_img}"><p>${choice.name}</p>`;
+                card.onclick = () => selectPokemon(choice);
+                dom.choicesContainer.appendChild(card);
+            });
+        }
+        
+        function selectPokemon(choice) {
+            player = { ...JSON.parse(JSON.stringify(choice)), hp: 10, maxHp: 10 };
+            originalPlayer = JSON.parse(JSON.stringify(choice));
+            dom.pokemonSelectionScreen.style.display = 'none';
+            dom.gameContainer.style.display = 'block';
+            audio.battle.volume = 0.2;
+            audio.battle.play().catch(e => console.log("Autoplay was prevented."));
+            initGame();
+        }
+
+        function initGame() {
+            const shuffled = allEnemies.sort(() => 0.5 - Math.random());
+            enemies = shuffled.slice(0, 3).map(e => ({...e, hp: 5, maxHp: 5})); 
+            currentEnemyIndex = 0; attackCounter = 0; evolutionStage = 0; player.hp = player.maxHp;
+            player.name = originalPlayer.name; player.back_img = originalPlayer.back_img; player.evolution = originalPlayer.evolution;
+            updatePlayerStatus(); updateEvolutionBar();
+            loadEnemy();
+        }
+
+        function loadEnemy() {
+            if (player.hp <= 0) { loseGame(); return; }
+            if (currentEnemyIndex >= enemies.length) { winGame(); return; }
+            enemy = enemies[currentEnemyIndex];
+            dom.enemyPokemonImg.classList.remove('faint-effect');
+            dom.enemyPokemonImg.style.opacity = 1; dom.enemyPokemonImg.src = enemy.img;
+            dom.enemyName.textContent = enemy.name;
+            updateEnemyHp();
+            setTimeout(() => setNewWord(), 1000);
+        }
+
+        function setNewWord() {
+            const availableWords = words.filter(w => w !== currentWord);
+            currentWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+            prepareQuestion();
+        }
+
+        function prepareQuestion() {
+            dom.wordInput.value = ''; dom.wordInput.disabled = false; dom.attackButton.disabled = false; dom.wordInput.focus();
+            wrongAnswerCount = 0; revealedIndices.clear();
+            const letterCount = currentWord.replace(/ /g, '').length;
+            dom.messageBox.innerHTML = `Spell the word...<br>(it has ${letterCount} letters)`;
+            setTimeout(() => speak(currentWord), 500);
+        }
+        
+        function checkAnswer() {
+            if (dom.wordInput.disabled) return;
+            const userAnswer = dom.wordInput.value.trim().toLowerCase();
+            if (userAnswer === currentWord.toLowerCase()) { handleCorrectAnswer(); }
+            else { handleWrongAnswer(); }
+        }
+        
+        // --- Action Handlers ---
+        function handleCorrectAnswer() {
+            dom.wordInput.disabled = true; dom.attackButton.disabled = true;
+            dom.messageBox.textContent = 'Correct! ' + player.name + ' attacks!';
+            audio.attack.currentTime = 0; audio.attack.play();
+            dom.enemyPokemonImg.classList.add('attack-effect');
+            setTimeout(() => dom.enemyPokemonImg.classList.remove('attack-effect'), 300);
+            enemy.hp -= 1;
+            updateEnemyHp();
+            attackCounter++;
+            updateEvolutionBar();
+            const shouldEvolve = (evolutionStage === 0 && attackCounter >= 4 && player.evolution) || (evolutionStage === 1 && attackCounter >= 8 && originalPlayer.evolution.evolution);
+            if (enemy.hp <= 0) { setTimeout(handleEnemyFaint, 1000); }
+            else if (shouldEvolve) { setTimeout(evolvePlayer, 1500); }
+            else { setTimeout(setNewWord, 1500); }
+        }
+
+        function handleWrongAnswer() {
+            wrongAnswerCount++;
+            dom.wordInput.value = '';
+            if (wrongAnswerCount < 3) {
+                let hint = ''; let availableIndices = [];
+                for(let i = 0; i < currentWord.length; i++) { if (currentWord[i] !== ' ' && !revealedIndices.has(i)) { availableIndices.push(i); } }
+                if (availableIndices.length > 0) { const indexToReveal = availableIndices[Math.floor(Math.random() * availableIndices.length)]; revealedIndices.add(indexToReveal); }
+                for(let i = 0; i < currentWord.length; i++) {
+                    if (currentWord[i] === ' ') hint += ' ';
+                    else if (revealedIndices.has(i)) hint += currentWord[i];
+                    else hint += '_';
+                }
+                dom.messageBox.innerHTML = `Not quite! Hint:<br>${hint}`;
+                speak("Try again.");
+            } else { handlePunishment(); }
+        }
+
+        function handlePunishment() {
+            dom.wordInput.disabled = true; dom.attackButton.disabled = true;
+            dom.messageBox.innerHTML = `The answer is: ${currentWord}<br>The enemy attacks!`;
+            speak(currentWord, () => {
+                setTimeout(() => speak(currentWord, () => {
+                    setTimeout(() => speak(currentWord), 1500);
+                }), 1500);
+            });
+            setTimeout(handleEnemyAttack, 1000);
+        }
+
+        function handleEnemyAttack() {
+            player.hp -= 1;
+            audio.hit.play();
+            dom.playerPokemonImg.classList.add('attack-effect');
+            setTimeout(() => dom.playerPokemonImg.classList.remove('attack-effect'), 300);
+            updatePlayerStatus();
+            if (player.hp <= 0) { setTimeout(loseGame, 1000); }
+            else {
+                dom.messageBox.innerHTML = `Remember this word: <br>${currentWord}`;
+                setTimeout(prepareQuestion, 10000);
+            }
+        }
+
+        function handleEnemyFaint() {
+            dom.messageBox.textContent = enemy.name + ' was defeated!';
+            dom.enemyPokemonImg.classList.add('faint-effect');
+            currentEnemyIndex++;
+            setTimeout(loadEnemy, 2000);
+        }
+        
+        function evolvePlayer() {
+            const oldName = player.name;
+            const evolution = evolutionStage === 0 ? originalPlayer.evolution : originalPlayer.evolution.evolution;
+            evolutionStage++;
+            dom.messageBox.textContent = `What? ${oldName} is evolving!`;
+            dom.playerPokemonImg.classList.add('evolve-effect');
+            audio.evolve.play();
+            setTimeout(() => {
+                player.name = evolution.name; player.back_img = evolution.back_img;
+                updatePlayerStatus();
+                dom.playerPokemonImg.classList.remove('evolve-effect');
+                dom.messageBox.textContent = `Congrats! ${oldName} evolved into ${player.name}!`;
+                setTimeout(setNewWord, 2500);
+            }, 2500);
+        }
+
+        function winGame() {
+            audio.battle.pause();
+            audio.victory.play();
+            const captureTarget = enemy;
+            dom.gameContainer.style.display = 'none';
+            dom.endScreen.style.display = 'flex';
+            dom.endTitle.textContent = "You Won!";
+            dom.endMessage.textContent = `You defeated all trainers! Now, a chance to catch ${captureTarget.name}!`;
+            dom.pokeballImg.style.display = 'block';
+            setTimeout(() => {
+                audio.pokeball.play();
+                dom.endMessage.textContent = `You throw a Poké Ball at ${captureTarget.name}!`;
+                setTimeout(() => {
+                    const isCaught = Math.random() < 0.5;
+                    if (isCaught) {
+                        audio.capture.play();
+                        dom.endMessage.textContent = `Gotcha! ${captureTarget.name} was caught!`;
+                    } else {
+                        dom.endMessage.textContent = `Oh no! ${captureTarget.name} broke free!`;
+                    }
+                }, 2000);
+            }, 2000);
+        }
+
+        function loseGame() {
+            audio.battle.pause();
+            dom.playerPokemonImg.classList.add('faint-effect');
+            dom.messageBox.textContent = 'You were defeated...';
+            setTimeout(() => {
+                dom.gameContainer.style.display = 'none';
+                dom.endScreen.style.display = 'flex';
+                dom.endTitle.textContent = "Game Over";
+                dom.endMessage.textContent = "Better luck next time!";
+                dom.pokeballImg.style.display = 'none';
+            }, 2000);
+        }
+        
+        function resetGame() {
+            audio.victory.pause(); audio.victory.currentTime = 0;
+            dom.endScreen.style.display = 'none';
+            dom.controlsBox.style.display = 'flex';
+            showPokemonSelection();
+        }
+
+        // --- UI & Sound Updates ---
+        function speak(text, callback) {
+            if (isSpeaking) return;
+            isSpeaking = true;
+            
+            const audioSrc = wordData[text.toLowerCase().replace(/ /g, '_')];
+            if (!audioSrc) {
+                console.error(`Audio not found for: ${text}`);
+                isSpeaking = false;
+                if(callback) callback();
+                return;
+            }
+
+            audio.word.src = audioSrc;
+            
+            const onEnded = () => {
+                isSpeaking = false;
+                audio.word.removeEventListener('ended', onEnded);
+                audio.word.removeEventListener('error', onError);
+                if (callback) callback();
+            };
+            const onError = () => {
+                console.error(`Failed to load audio for: ${text}`);
+                isSpeaking = false;
+                audio.word.removeEventListener('ended', onEnded);
+                audio.word.removeEventListener('error', onError);
+                if(callback) callback();
+            };
+            
+            audio.word.addEventListener('ended', onEnded);
+            audio.word.addEventListener('error', onError);
+            
+            audio.word.play().catch(error => {
+                console.error("Audio play failed:", error);
+                isSpeaking = false;
+            });
+        }
+
+        function updatePlayerStatus() {
+            dom.playerName.textContent = player.name; dom.playerPokemonImg.src = player.back_img;
+            const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
+            dom.playerHpBar.style.width = hpPercent + '%';
+            dom.playerHpBar.classList.toggle('low', hpPercent < 50);
+            dom.playerHpBar.classList.toggle('critical', hpPercent < 25);
+        }
+
+        function updateEnemyHp() {
+            const hpPercent = Math.max(0, (enemy.hp / enemy.maxHp) * 100);
+            dom.enemyHpBar.style.width = hpPercent + '%';
+            dom.enemyHpBar.classList.toggle('low', hpPercent < 50);
+            dom.enemyHpBar.classList.toggle('critical', hpPercent < 25);
+        }
+        
+        function updateEvolutionBar() {
+            let progress = 0;
+            if (evolutionStage === 0) {
+                progress = (attackCounter / 4) * 100;
+            } else if (evolutionStage === 1) {
+                progress = ((attackCounter - 4) / 4) * 100;
+            } else {
+                progress = 100;
+            }
+            dom.evolutionBar.style.width = Math.min(100, progress) + '%';
+        }
+    </script>
+</body>
+</html>
